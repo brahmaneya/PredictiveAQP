@@ -223,17 +223,39 @@ public class LogisticRegressionSolvers {
 		for (String className : sizes.keySet()) {
 			selectivities.put(className, selectivities.get(className) / sizes.get(className));
 		}
+		
+		// remove later
+		Double correlation = 0.0;
+		Double total = 0.0;
+		for (int i = 0; i < testInstances.numInstances(); i++) {
+			final Instance instance = testInstances.instance(i);
+			double[] distribution = new double[2];
+			try{
+				distribution = logistic.distributionForInstance(instance);
+			} catch (Exception e) {
+				if (instance == null) {
+					System.out.println("nuLL");
+				}
+			}
+			if (instance.classValue() < 0.5) {
+				correlation += distribution[0];
+			} else {
+				correlation += distribution[1];
+			}
+			total += 1.0;
+		}
+		out.println(correlation/total);
+		// end remove later
 	}
 	
 	public static void main(String[] argv) throws Exception {
-		if(1!=2)return;
-		Double trainFraction = 1.0/10;
+		Double trainFraction = 1.0/100;
 		final Integer numClasses = 10;
 		Map<String, Double> sizes = new HashMap<String, Double>();
 		Map<String, Double> selectivities = new HashMap<String, Double>();
 		Map<String, Integer> positiveSamples = new HashMap<String, Integer>();
 		Map<String, Integer> negativeSamples = new HashMap<String, Integer>();
-		logisticRegressionGroups(CensusDataExtractor.ARFFFILELOCATION, CensusDataExtractor.TARGET, sizes, selectivities, positiveSamples, negativeSamples, numClasses, trainFraction, "bucket-size");
+		logisticRegressionGroups(ProsperDataExtractor.ARFFFILELOCATION, ProsperDataExtractor.TARGET, sizes, selectivities, positiveSamples, negativeSamples, numClasses, trainFraction, "bucket-size");
 		if(1!=2)return;
 		for (trainFraction = 0.02; trainFraction < 0.03; trainFraction += 0.02) {
 			logisticRegressionGroups(CensusDataExtractor.ARFFFILELOCATION, CensusDataExtractor.TARGET, sizes, selectivities, positiveSamples, negativeSamples, numClasses, trainFraction, "bucket-size");

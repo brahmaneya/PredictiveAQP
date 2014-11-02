@@ -339,36 +339,80 @@ public class ProsperDataExtractor {
 		}
 	}
 	
+	public static void extractAllSizeSelectivities (List<String> samples, List<Map<String, Double>> sizesList, List<Map<String, Double>> selectivitiesList) {
+		String[] fields = csvParse(samples.get(0));
+		int numFields = fields.length;
+		List<Map<String, Map<String, Integer>>> pairCountsList = new ArrayList<Map<String, Map<String, Integer>>>();
+		List<Map<String, Integer>> predCountListList = new ArrayList<Map<String, Integer>>();
+		for (int col = 0; col < numFields; col++) {
+			pairCountsList.add(new HashMap<String, Map<String, Integer>>());
+			predCountListList.add(new HashMap<String, Integer>());
+		}
+		for (String s : samples) {
+			if(s.equals("")) { 	
+				break;
+			}
+			fields = csvParse(s);
+			if (fields.length != numFields) {
+				break;
+			}
+			String loanStatus = "";
+			if(IGNORETARGET.contains(fields[TARGET])) {
+				continue;
+			} else if (GOODTARGET.contains(fields[TARGET])) {
+				loanStatus = "good";
+			} else if (BADTARGET.contains(fields[TARGET])) {
+				loanStatus = "bad";
+			} 
+			for (int col = 0; col < numFields; col++) {
+				final Map<String, Map<String, Integer>> pairCounts = pairCountsList.get(col);
+				final Map<String, Integer> predCountList = predCountListList.get(col);
+				final String predictorValue = fields[col];
+				incrementInMap(predCountList, predictorValue);
+				if (!pairCounts.containsKey(predictorValue)) {
+					pairCounts.put(predictorValue, new HashMap<String, Integer>());
+					pairCounts.get(predictorValue).put("good", 0);
+				}
+				incrementInMap(pairCounts.get(predictorValue), loanStatus);
+			}
+		}
+		
+		for (int col = 0; col < numFields; col++) {
+			final Map<String, Double> sizes = new HashMap<String, Double>();
+			sizesList.add(sizes);
+			final Map<String, Double> selectivities = new HashMap<String, Double>();
+			selectivitiesList.add(selectivities);
+			final Map<String, Map<String, Integer>> pairCounts = pairCountsList.get(col);
+			final Map<String, Integer> predCountList = predCountListList.get(col);
+			for (String predictorValue : pairCounts.keySet()) {
+				sizes.put(predictorValue, predCountList.get(predictorValue).doubleValue());
+				selectivities.put(predictorValue, (0 + pairCounts.get(predictorValue).get("good"))/(0 + sizes.get(predictorValue)));
+			}			
+		}
+	}
+	
 	/**
 	 * Takes a sample of labelled tuples, uses them to estimates selectivities for all columns, and runs sizesKnown algo to get cost on using
 	 * that column as correlated column. Chooses min cost column among those columns that have < valThreshold distinct values (
 	 */
 	public static Integer getBestColumn (List<String> samples, Integer valThreshold) {
+		List<Map<String, Double>> sizesList = new ArrayList<Map<String, Double>>();
+		List<Map<String, Double>> selectivitiesList = new ArrayList<Map<String, Double>>();
+		extractAllSizeSelectivities (samples, sizesList, selectivitiesList);
 		Integer bestColumn = -1;
 		Double minCost = Double.MAX_VALUE;
-		for (int i = 0; i < 90; i++) {
+		final Integer numCols = sizesList.size();
+		for (int i = 0; i < numCols; i++) {
 			if (i == TARGET) {
 				continue;
 			}
-			Map<String, Double> sizes = new HashMap<String, Double>();
-			Map<String, Double> selectivities = new HashMap<String, Double>();
-			Map<String, Double> retrieve = new HashMap<String, Double>();
-			Map<String, Double> evaluate = new HashMap<String, Double>();
-			List<Integer> predictors = new ArrayList<Integer>();
-			predictors.add(i);
-			try{
-				extractSizeSelectivity(samples, predictors, sizes, selectivities);
-			} catch (Exception e)  {
-				break;
-			}
-			if (sizes.size() > 20) {
+			final Map<String, Double> sizes = sizesList.get(i);
+			final Map<String, Double> selectivities = selectivitiesList.get(i);
+			if (sizes.size() > valThreshold || sizes.size() < 2) {
 				continue;
 			}
-			//out.println(sizes.size());
-			//out.println(sizes.toString());
-			//out.println(selectivities.toString());
-			Double retrieveCost = 1.0;
-			Double evaluateCost = 3.0;
+			Map<String, Double> retrieve = new HashMap<String, Double>();
+			Map<String, Double> evaluate = new HashMap<String, Double>();
 			Double alpha = 0.8;
 			Double beta =  0.8; 
 			Double rho = 0.8; 
@@ -384,8 +428,9 @@ public class ProsperDataExtractor {
 	
 	public static void main(String[] args) throws Exception {
 		List<String> samples = Sampling.getSamples(0.01, FILELOCATION);
-		out.println(getBestColumn(samples, 10));
-		if (1!=2) return;
+		Long timer = System.currentTimeMillis();
+		out.println(getBestColumn(samples, samples.size()/10));
+		out.println("Time : " + (System.currentTimeMillis() - timer));
 		
 		int predictor = 4; // Good values: 4 (grade) 
 		List<Integer> predictors = new ArrayList<Integer>();

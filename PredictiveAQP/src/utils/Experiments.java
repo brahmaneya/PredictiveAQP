@@ -55,7 +55,7 @@ public class Experiments {
 			positive.put(key, (int) Math.round(sizes.get(key) * selectivities.get(key)));
 			negative.put(key, (int) Math.round(sizes.get(key) * (1 - selectivities.get(key))));
 		}
-		final Integer numIters = 50;
+		final Integer numIters = 50; // 1 for computing time
 		Double retrieves = 0.0;
 		Double evaluates = 0.0;
 		for (Integer iter = 0; iter < numIters; iter++) {
@@ -65,6 +65,7 @@ public class Experiments {
 			evaluate = new HashMap<String, Double>();
 			//ExpectationSolvers.biGreedyEvaluate(sizes, selectivities, alpha, beta, rho, retrieve, evaluate);
 			//ProbabilisticSolvers.sizesKnownEvaluate(sizes, selectivities, alpha, beta, rho, retrieve, evaluate);
+			// Long timer = System.currentTimeMillis(); 
 			Map<String, Integer> totalSamples = PerformanceAnalysis.generateSampleSizes(sizes, positiveSamples, negativeSamples, "constant", num);
 			PerformanceAnalysis.sample(sizes, positive, negative, totalSamples, positiveSamples, negativeSamples);
 			try {
@@ -74,6 +75,7 @@ public class Experiments {
 				iter--;
 				continue;
 			}
+			// out.println("time :" + (System.currentTimeMillis() - timer)); // remove
 			Map<String, Double> stats = PerformanceAnalysis.findStats(sizes, retrieve, evaluate, positive, negative, positiveSamples, negativeSamples);
 			retrieves += stats.get("expectedRetrieves");
 			evaluates += stats.get("expectedEvaluates");
